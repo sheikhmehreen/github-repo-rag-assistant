@@ -49,3 +49,11 @@ temp/
 __pycache__/
 .pytest_cache/
 .ruff_cache/
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Application data
+backend/data/
