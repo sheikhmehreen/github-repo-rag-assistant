@@ -1,87 +1,85 @@
+"""Strict validation of GitHub repository URLs (Epic 2, T2.1).
+
+Principle: validate, never repair. A URL is either accepted exactly as given
+(apart from one optional trailing slash and one optional ``.git`` suffix)
+or rejected with ``InvalidUrlError``.
+"""
+
+from __future__ import annotations
+
 import re
 from dataclasses import dataclass
 from urllib.parse import urlsplit
 
-class IngestionError(Exception):
-    """Base exception for all ingestion tasks."""
-    pass
+from app.core.exceptions import InvalidUrlError
 
-class InvalidUrlError(IngestionError):
-    """Raised when a provided URL violates structural or security rules."""
-    pass
+MAX_URL_LENGTH = 2048
+ALLOWED_HOST = "github.com"
+
+# GitHub usernames/orgs: 1-39 chars, alphanumeric or hyphen, no leading/trailing hyphen.
+_OWNER_RE = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?")
+# Repository names: 1-100 chars from this ASCII allowlist ("." and ".." rejected separately).
+_REPO_RE = re.compile(r"[A-Za-z0-9._-]{1,100}")
+# Anything that is not printable, non-space ASCII (whitespace, control chars, Unicode).
+_DISALLOWED_CHARS_RE = re.compile(r"[^\x21-\x7e]")
+
 
 @dataclass(frozen=True)
 class GitHubRepo:
+    """A validated GitHub repository reference."""
+
     owner: str
     repo: str
 
-# Owner: 1-39 chars, alphanumeric or hyphens, no leading/trailing hyphen
-OWNER_REGEX = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$")
-# Repo: 1-100 chars, alphanumeric, dots, underscores, hyphens
-REPO_REGEX = re.compile(r"^[A-Za-z0-9._-]{1,100}$")
 
 def validate_github_url(url: str) -> GitHubRepo:
-    """Strictly validates a GitHub repository root URL and extracts owner and repo."""
-    if not isinstance(url, str):
-        raise InvalidUrlError("URL must be a string.")
-        
-    if len(url) > 2048:
-        raise InvalidUrlError("URL exceeds maximum length of 2048 characters.")
+    """Validate a GitHub repository URL and return its owner and repo name.
 
-    # 1. Validate raw string before any parsing to catch whitespace/control character tricks
-    if any(c.isspace() or ord(c) < 32 or ord(c) == 127 for c in url):
-        raise InvalidUrlError("URL contains whitespace or control characters.")
-        
+    Raises:
+        InvalidUrlError: if the URL is not a plain https://github.com/owner/repo URL.
+    """
+    if not isinstance(url, str) or not url:
+        raise InvalidUrlError("URL must be a non-empty string.")
+    if len(url) > MAX_URL_LENGTH:
+        raise InvalidUrlError("URL is too long.")
+
+    # Check the RAW string before parsing: urlsplit() silently strips tabs/newlines.
+    if _DISALLOWED_CHARS_RE.search(url):
+        raise InvalidUrlError(
+            "URL contains whitespace, control or non-ASCII characters."
+        )
     if "\\" in url:
-        raise InvalidUrlError("URL contains invalid backslash characters.")
-        
-    if not url.isascii():
-        raise InvalidUrlError("URL contains non-ASCII characters.")
+        raise InvalidUrlError("URL must not contain backslashes.")
+    if "?" in url or "#" in url:
+        raise InvalidUrlError("URL must not contain a query string or fragment.")
+    if "%" in url:
+        raise InvalidUrlError("URL must not contain percent-encoded characters.")
 
-    # 2. Parse URL and strictly validate network location and scheme
     try:
-        parsed = urlsplit(url)
-    except Exception as e:
-        raise InvalidUrlError(f"URL parsing failed: {str(e)}")
+        parts = urlsplit(url)
+    except ValueError as exc:
+        raise InvalidUrlError("URL is malformed.") from exc
 
-    if parsed.scheme != "https":
-        raise InvalidUrlError("URL scheme must be exactly 'https'.")
+    if parts.scheme != "https":
+        raise InvalidUrlError("URL must use https.")
 
-    if parsed.netloc != "github.com":
-        raise InvalidUrlError("URL host must be exactly 'github.com'.")
+    # Exact comparison also rejects credentials (user:pass@), ports and
+    # lookalikes such as github.com.attacker.com or www.github.com.
+    if parts.netloc != ALLOWED_HOST:
+        raise InvalidUrlError("URL host must be exactly github.com.")
 
-    if parsed.query or parsed.fragment:
-        raise InvalidUrlError("URL must not contain query strings or fragments.")
+    path = parts.path.removeprefix("/")
+    path = path.removesuffix("/")  # one optional trailing slash
+    segments = path.split("/")
+    if len(segments) != 2 or not all(segments):
+        raise InvalidUrlError("URL must be https://github.com/<owner>/<repo>.")
 
-    # 3. Path sanitization and structural checking
-    path = parsed.path
-    if "%" in path:
-        raise InvalidUrlError("URL path contains forbidden URL-encoded characters.")
+    owner, repo = segments
+    repo = repo.removesuffix(".git")  # one optional .git suffix
 
-    # Remove exactly one trailing slash if present
-    if path.endswith("/"):
-        path = path[:-1]
-
-    # Split and clean elements
-    segments = [s for s in path.split("/") if s]
-
-    # Must contain exactly two elements: [owner, repo]
-    if len(segments) != 2:
-        if "tree" in segments or "blob" in segments:
-            raise InvalidUrlError("Provide the repository root URL, not a branch or file path.")
-        raise InvalidUrlError("URL path must contain exactly the owner and repository segments.")
-
-    owner, repo = segments[0], segments[1]
-
-    # Remove optional .git suffix from repository name
-    if repo.lower().endswith(".git"):
-        repo = repo[:-4]
-
-    # 4. Strict Regex Validation & Explicit Traversal Protection
-    if not OWNER_REGEX.match(owner):
-        raise InvalidUrlError("Invalid GitHub owner format.")
-
-    if not REPO_REGEX.match(repo) or repo in (".", ".."):
-        raise InvalidUrlError("Invalid GitHub repository name format.")
+    if not _OWNER_RE.fullmatch(owner):
+        raise InvalidUrlError("Invalid repository owner name.")
+    if repo in {"", ".", ".."} or not _REPO_RE.fullmatch(repo):
+        raise InvalidUrlError("Invalid repository name.")
 
     return GitHubRepo(owner=owner, repo=repo)
