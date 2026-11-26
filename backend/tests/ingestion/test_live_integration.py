@@ -3,7 +3,6 @@
 import re
 
 import pytest
-
 from app.core.config import Settings
 from app.ingestion.pipeline import ingest_repository
 

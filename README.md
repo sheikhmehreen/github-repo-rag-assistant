@@ -47,7 +47,26 @@ github-repo-rag-assistant/
 
 ## Status
 
-Stage 2 implements GitHub repository URL validation, metadata lookup, commit-pinned bounded archive download, safe extraction, and filtering and reading of repository text files. Its offline ingestion tests use mocked GitHub responses. Later stages for chunking, indexing, retrieval, answer generation, and the frontend remain in progress.
+Stage 2 implements GitHub repository URL validation, metadata lookup, commit-pinned bounded archive download, safe extraction, and filtering and reading of repository text files. Epic 3 adds language-aware chunking, local Hugging Face embeddings, persistent per-repository Chroma indexes, and a smoke script. Retrieval is available from the vector store; answer generation and the frontend remain in progress.
+
+### Epic 3 (chunking and vector indexing)
+
+Install the CPU build of PyTorch first, then the dependencies in the root `requirements.txt`:
+
+```powershell
+py -3.12 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+python -m pip install -r requirements.txt
+```
+
+Use Python 3.12 for this environment, as required by the planned backend stack.
+
+The embedding model downloads from Hugging Face on first use. Chunk settings and the Chroma persistence path can be adjusted with `CHUNK_SIZE`, `CHUNK_OVERLAP`, `EMBEDDING_MODEL_NAME`, `RETRIEVAL_TOP_K`, `CHROMA_PERSIST_DIR`, and `MAX_CHUNKS_PER_REPO` in `.env`. To index a local folder and inspect results, run from the repository root:
+
+```powershell
+python -m scripts.smoke_index . "where are the application settings loaded"
+```
 
 ## Repository ingestion (Stage 2)
 

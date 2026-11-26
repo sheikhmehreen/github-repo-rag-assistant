@@ -44,12 +44,14 @@ class Settings(BaseSettings):
         default_factory=lambda: {"api.github.com", "codeload.github.com"}
     )
 
-    # Chunking (units: tokens)
-    chunk_size: int = Field(default=200, gt=0)
-    chunk_overlap: int = Field(default=30, ge=0)
+    # Chunking (units: characters)
+    chunk_size: int = Field(default=1000, gt=0)
+    chunk_overlap: int = Field(default=150, ge=0)
+    chroma_persist_dir: Path = Field(default=Path("data/chroma"))
+    max_chunks_per_repo: int = Field(default=5000, gt=0)
 
     # Retrieval
-    top_k: int = Field(default=5, gt=0)
+    retrieval_top_k: int = Field(default=5, gt=0)
     max_question_length: int = Field(default=1000, gt=0)
 
     # Cosine SIMILARITY
@@ -75,7 +77,7 @@ class Settings(BaseSettings):
     llm_max_retries: int = 2
 
     # Embeddings
-    embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
+    embedding_model_name: str = "sentence-transformers/all-MiniLM-L6-v2"
 
     # Storage Paths
     data_dir: Path = Field(default=Path("data"))
@@ -94,6 +96,14 @@ class Settings(BaseSettings):
         path_val = Path(v)
         if not path_val.is_absolute():
             return BACKEND_DIR / path_val
+        return path_val
+
+    @field_validator("chroma_persist_dir", mode="before")
+    @classmethod
+    def relative_chroma_path_is_anchored_to_backend(cls, v: any) -> Path:
+        path_val = Path(v)
+        if not path_val.is_absolute():
+            return PROJECT_ROOT / path_val
         return path_val
 
     # Model Validators

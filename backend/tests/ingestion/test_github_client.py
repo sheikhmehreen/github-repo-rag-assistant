@@ -7,8 +7,6 @@ from types import SimpleNamespace
 
 import httpx
 import pytest
-from pydantic import SecretStr
-
 from app.core.exceptions import (
     ArchiveLimitExceededError,
     DownloadFailedError,
@@ -21,6 +19,7 @@ from app.core.exceptions import (
 )
 from app.ingestion import github_client
 from app.ingestion.github_client import GitHubClient
+from pydantic import SecretStr
 
 SHA = "a" * 40
 CODELOAD_URL = f"https://codeload.github.com/openai/openai-python/legacy.zip/{SHA}"

@@ -5,7 +5,6 @@ import zipfile
 from pathlib import Path
 
 import pytest
-
 from app.core.exceptions import ArchiveLimitExceededError, UnsafeArchiveError
 from app.ingestion.extractor import extract_archive
 

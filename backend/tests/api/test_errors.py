@@ -1,8 +1,6 @@
 import logging
 
 import pytest
-from fastapi.testclient import TestClient
-
 from app.core.exceptions import (
     DownloadFailedError,
     IngestionFailedError,
@@ -10,6 +8,7 @@ from app.core.exceptions import (
     RepoNotFoundError,
 )
 from app.main import create_app
+from fastapi.testclient import TestClient
 
 
 def build_client(error_class) -> TestClient:

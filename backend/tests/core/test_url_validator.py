@@ -1,7 +1,6 @@
 """Compatibility coverage for the Epic 2 GitHub URL validator."""
 
 import pytest
-
 from app.core.exceptions import InvalidUrlError
 from app.ingestion.url_validator import GitHubRepo, validate_github_url
 

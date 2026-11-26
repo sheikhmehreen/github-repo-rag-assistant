@@ -5,7 +5,6 @@ import zipfile
 
 import httpx
 import pytest
-
 from app.core.exceptions import InvalidUrlError, NoUsableFilesError
 from app.ingestion.github_client import GitHubClient
 from app.ingestion.pipeline import ingest_repository
