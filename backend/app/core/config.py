@@ -62,7 +62,7 @@ class Settings(BaseSettings):
     github_http_timeout_seconds: float = Field(default=15.0, gt=0)
     repo_download_timeout_seconds: int = Field(default=60, gt=0)
     download_timeout_seconds: float = Field(default=60.0, gt=0)
-    ingestion_timeout_seconds: int = Field(default=120, gt=0)
+    ingestion_timeout_seconds: int = Field(default=300, gt=0)
     llm_timeout_seconds: int = Field(default=60, gt=0)
 
     # GitHub Secrets
@@ -78,6 +78,11 @@ class Settings(BaseSettings):
 
     # Embeddings
     embedding_model_name: str = "sentence-transformers/all-MiniLM-L6-v2"
+    embedding_batch_size: int = Field(default=64, gt=0)
+    sqlite_path: Path = Field(default=Path("data/repos.db"))
+    ingestion_max_repo_size_kb: int = Field(default=51_200, gt=0)
+    ingestion_max_chunks: int = Field(default=20_000, gt=0)
+    ingestion_temp_dir: Path = Field(default=Path("data/tmp"))
 
     # Storage Paths
     data_dir: Path = Field(default=Path("data"))
@@ -98,9 +103,11 @@ class Settings(BaseSettings):
             return BACKEND_DIR / path_val
         return path_val
 
-    @field_validator("chroma_persist_dir", mode="before")
+    @field_validator(
+        "chroma_persist_dir", "sqlite_path", "ingestion_temp_dir", mode="before"
+    )
     @classmethod
-    def relative_chroma_path_is_anchored_to_backend(cls, v: any) -> Path:
+    def relative_storage_path_is_anchored_to_backend(cls, v: any) -> Path:
         path_val = Path(v)
         if not path_val.is_absolute():
             return PROJECT_ROOT / path_val

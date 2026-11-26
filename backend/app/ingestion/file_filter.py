@@ -8,6 +8,7 @@ to an LLM).
 from __future__ import annotations
 
 import os
+import re
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
@@ -58,6 +59,12 @@ SENSITIVE_PREFIXES = (
     "secret.",
 )
 SAFE_ENV_TEMPLATES = frozenset({".env.example", ".env.sample", ".env.template"})
+_TRANSLATED_README_RE = re.compile(
+    r"^readme[._-](?:"
+    r"af|ar|bg|ca|cs|da|de|el|en|es|et|eu|fa|fi|fil|fr|ga|gl|he|hi|hr|hu|id|is|it|"
+    r"ja|ko|lt|lv|ms|nb|nl|nn|pl|pt|pt-br|ro|ru|sk|sl|sr|sv|th|tr|uk|vi|zh|"
+    r"zh-hans|zh-hant)(?:[-_](?:[a-z]{2}|hans|hant))?\.(?:md|rst|txt)$"
+)
 
 
 @dataclass(frozen=True)
@@ -112,6 +119,8 @@ def _skip_reason(path: Path, name: str, settings: Settings) -> str | None:
         return "not_regular_file"
     if is_sensitive(name):
         return "sensitive"
+    if _TRANSLATED_README_RE.fullmatch(name):
+        return "translated_document"
     if name in LOCK_FILES:
         return "lock_file"
     if name.endswith((".min.js", ".min.css", ".map")):

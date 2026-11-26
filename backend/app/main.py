@@ -1,3 +1,5 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 
 from app.api.errors import app_error_handler
@@ -5,6 +7,7 @@ from app.api.health import router as health_router
 from app.core.config import get_settings
 from app.core.exceptions import AppError
 from app.core.logging import configure_logging
+from app.ingestion.wiring import warm_up_embeddings
 
 
 def create_app() -> FastAPI:
@@ -13,10 +16,16 @@ def create_app() -> FastAPI:
     log_level = "DEBUG" if settings.debug else "INFO"
     configure_logging(log_level)
 
+    @asynccontextmanager
+    async def lifespan(_application: FastAPI):
+        warm_up_embeddings()
+        yield
+
     application = FastAPI(
         title=settings.app_name,
         description="Ask questions about public GitHub repositories.",
         version="0.1.0",
+        lifespan=lifespan,
     )
     application.add_exception_handler(AppError, app_error_handler)
     application.include_router(health_router)

@@ -47,7 +47,7 @@ github-repo-rag-assistant/
 
 ## Status
 
-Stage 2 implements GitHub repository URL validation, metadata lookup, commit-pinned bounded archive download, safe extraction, and filtering and reading of repository text files. Epic 3 adds language-aware chunking, local Hugging Face embeddings, persistent per-repository Chroma indexes, and a smoke script. Retrieval is available from the vector store; answer generation and the frontend remain in progress.
+Stage 2 implements GitHub repository URL validation, metadata lookup, commit-pinned bounded archive download, safe extraction, and filtering and reading of repository text files. Epic 3 adds language-aware chunking and a local Chroma index. Epic 4 adds normalized embeddings, a concurrency-safe vector-store interface, SQLite repository deduplication, and a failure-safe ingestion pipeline. The answer endpoint and frontend remain in progress.
 
 ### Epic 3 (chunking and vector indexing)
 
@@ -67,6 +67,18 @@ The embedding model downloads from Hugging Face on first use. Chunk settings and
 ```powershell
 python -m scripts.smoke_index . "where are the application settings loaded"
 ```
+
+### Epic 4 (repository ingestion pipeline)
+
+The pipeline validates a public repository URL, checks metadata and size limits, claims a deduplicated SQLite job, then downloads and safely extracts the commit archive. It filters and reads files, chunks and embeds them in batches, writes a per-repository cosine index, and records success or failure. Temporary files are cleaned up on every run. Paths and limits are configurable with `EMBEDDING_BATCH_SIZE`, `SQLITE_PATH`, `INGESTION_TIMEOUT_SECONDS`, `INGESTION_MAX_REPO_SIZE_KB`, `INGESTION_MAX_CHUNKS`, and `INGESTION_TEMP_DIR`.
+
+Run the real-repository retrieval milestone from the repository root (it contacts GitHub and downloads the configured public repositories):
+
+```powershell
+python -m scripts.milestone1 | Tee-Object -FilePath milestone1-output.txt
+```
+
+Review the top five results for each question and record counts, timing, and one good and one weak result per repository in `docs/milestone1-notes.md`.
 
 ## Repository ingestion (Stage 2)
 

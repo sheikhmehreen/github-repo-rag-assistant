@@ -1,6 +1,6 @@
 """Tests for application settings used by Epic 2 ingestion."""
 
-from app.core.config import Settings
+from app.core.config import PROJECT_ROOT, Settings
 
 
 def test_epic_two_limits_have_bounded_defaults() -> None:
@@ -36,3 +36,15 @@ def test_epic_two_limits_can_be_overridden() -> None:
     assert settings.max_files == 5
     assert settings.max_compression_ratio == 20
     assert settings.allowed_redirect_hosts == {"api.example.test"}
+
+
+def test_epic_four_defaults_include_batched_embeddings_and_storage_paths() -> None:
+    settings = Settings(_env_file=None, debug=False)
+
+    assert settings.embedding_batch_size == 64
+    assert settings.ingestion_timeout_seconds == 300
+    assert settings.ingestion_max_repo_size_kb == 51_200
+    assert settings.ingestion_max_chunks == 20_000
+    assert settings.chroma_persist_dir == PROJECT_ROOT / "data/chroma"
+    assert settings.sqlite_path == PROJECT_ROOT / "data/repos.db"
+    assert settings.ingestion_temp_dir == PROJECT_ROOT / "data/tmp"

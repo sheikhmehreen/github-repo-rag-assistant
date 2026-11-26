@@ -32,6 +32,16 @@ def test_keeps_source_docs_and_config(tmp_path, make_settings):
     }  # fmt: skip
 
 
+def test_skips_translated_readme_duplicates(tmp_path, make_settings):
+    for name in ["README.md", "README-fr.md", "README-zh-Hant.md", "README.de.md"]:
+        write(tmp_path, name)
+
+    result = filter_repository_files(tmp_path, make_settings())
+
+    assert {path.as_posix() for path in result.files} == {"README.md"}
+    assert result.skipped["translated_document"] == 3
+
+
 def test_excluded_directories_are_pruned_and_never_entered(
     tmp_path, make_settings, monkeypatch
 ):
