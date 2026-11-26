@@ -29,8 +29,20 @@ class Settings(BaseSettings):
 
     # Repository limits
     max_repo_size_mb: int = Field(default=50, gt=0)
+    # Epic 2 ingestion limits. Keep the KB value explicit because GitHub's API
+    # reports repository size in KB; these settings can all be overridden by env.
+    max_repo_size_kb: int = Field(default=51_200, gt=0)
+    max_archive_bytes: int = Field(default=52_428_800, gt=0)
+    max_extracted_bytes: int = Field(default=209_715_200, gt=0)
     max_files: int = Field(default=2000, gt=0)
     max_file_size_kb: int = Field(default=500, gt=0)
+    max_file_bytes: int = Field(default=1_048_576, gt=0)
+    max_compression_ratio: float = Field(default=100.0, gt=0)
+    download_chunk_size: int = Field(default=65_536, gt=0)
+    max_redirects: int = Field(default=3, ge=0)
+    allowed_redirect_hosts: set[str] = Field(
+        default_factory=lambda: {"api.github.com", "codeload.github.com"}
+    )
 
     # Chunking (units: tokens)
     chunk_size: int = Field(default=200, gt=0)
@@ -45,12 +57,15 @@ class Settings(BaseSettings):
 
     # Timeouts (seconds)
     github_api_timeout_seconds: int = Field(default=15, gt=0)
+    github_http_timeout_seconds: float = Field(default=15.0, gt=0)
     repo_download_timeout_seconds: int = Field(default=60, gt=0)
+    download_timeout_seconds: float = Field(default=60.0, gt=0)
     ingestion_timeout_seconds: int = Field(default=120, gt=0)
     llm_timeout_seconds: int = Field(default=60, gt=0)
 
     # GitHub Secrets
     github_token: SecretStr | None = Field(default=None)
+    github_api_base_url: str = "https://api.github.com"
 
     # LLM Settings
     llm_provider: str = "ollama"
