@@ -40,5 +40,5 @@ and is covered by prompt-injection safeguards rather than score tuning.
 
 ## Verification
 
-The 15-query run and throwaway planted-injection result are appended here after
-the real-repository checks complete.
+The full query outcomes and both planted-injection runs are recorded in
+[`epic5-verification.md`](epic5-verification.md).
