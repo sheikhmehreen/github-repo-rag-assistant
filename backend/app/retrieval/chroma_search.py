@@ -11,9 +11,7 @@ from app.retrieval.retriever import RawHit
 class ChromaVectorSearch:
     """Translate Chroma query results into plain ``RawHit`` values."""
 
-    def __init__(
-        self, client: Any, collection_name_for: Callable[[str], str]
-    ) -> None:
+    def __init__(self, client: Any, collection_name_for: Callable[[str], str]) -> None:
         self._client = client
         self._name_for = collection_name_for
 

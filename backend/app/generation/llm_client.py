@@ -21,9 +21,17 @@ class LLMClient(Protocol):
 
 
 class _HttpLLMClient:
-    def __init__(self, *, base_url: str, model: str, timeout: float, retries: int,
-                 max_output_tokens: int, api_key: str | None = None,
-                 transport: httpx.BaseTransport | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        base_url: str,
+        model: str,
+        timeout: float,
+        retries: int,
+        max_output_tokens: int,
+        api_key: str | None = None,
+        transport: httpx.BaseTransport | None = None,
+    ) -> None:
         self._base_url = base_url.rstrip("/")
         self._model = model
         self._timeout = timeout
@@ -45,17 +53,25 @@ class _HttpLLMClient:
                     trust_env=not ollama,
                 ) as client:
                     response = client.post(
-                        f"{self._base_url}/api/chat" if ollama else f"{self._base_url}/chat/completions",
+                        f"{self._base_url}/api/chat"
+                        if ollama
+                        else f"{self._base_url}/chat/completions",
                         json=payload,
                         headers=headers,
                     )
-                if (response.status_code == 429 or response.status_code >= 500) and attempt < self._retries:
+                if (
+                    response.status_code == 429 or response.status_code >= 500
+                ) and attempt < self._retries:
                     time.sleep(min(0.1 * (2**attempt), 1.0))
                     continue
                 response.raise_for_status()
                 try:
                     data = response.json()
-                    answer = data["message"]["content"] if ollama else data["choices"][0]["message"]["content"]
+                    answer = (
+                        data["message"]["content"]
+                        if ollama
+                        else data["choices"][0]["message"]["content"]
+                    )
                 except (ValueError, KeyError, IndexError, TypeError) as exc:
                     raise LLMResponseError() from exc
                 if not isinstance(answer, str) or not answer.strip():
@@ -78,22 +94,34 @@ class _HttpLLMClient:
 
 class OllamaLLMClient(_HttpLLMClient):
     def generate(self, system: str, user: str) -> str:
-        return self._request({
-            "model": self._model,
-            "stream": False,
-            "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
-            "options": {"num_predict": self._max_tokens, "temperature": 0.1},
-        }, ollama=True)
+        return self._request(
+            {
+                "model": self._model,
+                "stream": False,
+                "messages": [
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": user},
+                ],
+                "options": {"num_predict": self._max_tokens, "temperature": 0.1},
+            },
+            ollama=True,
+        )
 
 
 class HostedLLMClient(_HttpLLMClient):
     def generate(self, system: str, user: str) -> str:
-        return self._request({
-            "model": self._model,
-            "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
-            "max_tokens": self._max_tokens,
-            "temperature": 0.1,
-        }, ollama=False)
+        return self._request(
+            {
+                "model": self._model,
+                "messages": [
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": user},
+                ],
+                "max_tokens": self._max_tokens,
+                "temperature": 0.1,
+            },
+            ollama=False,
+        )
 
 
 class FakeLLMClient:
@@ -111,17 +139,26 @@ def build_llm_client(settings: Settings) -> LLMClient:
         if not settings.ollama_model.strip():
             raise LLMConfigError("Ollama model is required.")
         return OllamaLLMClient(
-            base_url=settings.ollama_base_url, model=settings.ollama_model,
-            timeout=settings.llm_timeout_seconds, retries=settings.llm_max_retries,
+            base_url=settings.ollama_base_url,
+            model=settings.ollama_model,
+            timeout=settings.llm_timeout_seconds,
+            retries=settings.llm_max_retries,
             max_output_tokens=settings.llm_max_output_tokens,
         )
     if settings.llm_provider == "hosted":
-        key = settings.hosted_llm_api_key.get_secret_value() if settings.hosted_llm_api_key else ""
+        key = (
+            settings.hosted_llm_api_key.get_secret_value()
+            if settings.hosted_llm_api_key
+            else ""
+        )
         if not key.strip() or not settings.hosted_llm_model.strip():
             raise LLMConfigError("Hosted provider model and API key are required.")
         return HostedLLMClient(
-            base_url=settings.hosted_llm_base_url, model=settings.hosted_llm_model,
-            timeout=settings.llm_timeout_seconds, retries=settings.llm_max_retries,
-            max_output_tokens=settings.llm_max_output_tokens, api_key=key,
+            base_url=settings.hosted_llm_base_url,
+            model=settings.hosted_llm_model,
+            timeout=settings.llm_timeout_seconds,
+            retries=settings.llm_max_retries,
+            max_output_tokens=settings.llm_max_output_tokens,
+            api_key=key,
         )
     raise LLMConfigError("Unsupported language model provider.")

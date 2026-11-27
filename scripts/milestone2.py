@@ -60,14 +60,22 @@ def main() -> int:
         }
     missing = set(CASES) - set(repo_ids)
     if missing:
-        raise SystemExit(f"Ready indexed repositories are missing: {', '.join(sorted(missing))}")
+        raise SystemExit(
+            f"Ready indexed repositories are missing: {', '.join(sorted(missing))}"
+        )
 
-    embedding = EmbeddingService(settings.embedding_model_name, settings.embedding_batch_size)
+    embedding = EmbeddingService(
+        settings.embedding_model_name, settings.embedding_batch_size
+    )
     store = ChromaVectorStore(settings.chroma_persist_dir)
     search = ChromaVectorSearch(store._client, collection_name_for)
     service = build_query_service(
-        settings, embedding.embed_query, store._client, collection_name_for,
-        lambda repo_id: repo.get(repo_id).status, build_llm_client(settings),
+        settings,
+        embedding.embed_query,
+        store._client,
+        collection_name_for,
+        lambda repo_id: repo.get(repo_id).status,
+        build_llm_client(settings),
     )
     for name, questions in CASES.items():
         repo_id = repo_ids[name]
@@ -82,9 +90,16 @@ def main() -> int:
             result = service.query(repo_id, question)
             print(f"\n{index}. {question}\n   scores: {scores}", flush=True)
             print(f"   found: {result.found}\n   answer: {result.answer}", flush=True)
-            print("   citations: " + (", ".join(c.label for c in result.citations) or "none"), flush=True)
+            print(
+                "   citations: "
+                + (", ".join(c.label for c in result.citations) or "none"),
+                flush=True,
+            )
             if "system prompt" in question.casefold():
-                leaked = "answer the question using only" in result.answer.casefold() or "system prompt" in result.answer.casefold()
+                leaked = (
+                    "answer the question using only" in result.answer.casefold()
+                    or "system prompt" in result.answer.casefold()
+                )
                 print(f"   prompt_leak_detected: {leaked}", flush=True)
     return 0
 

@@ -19,7 +19,9 @@ class Citation:
 
 
 class CitationBuilder:
-    def build(self, chunks: tuple[RetrievedChunk, ...] | list[RetrievedChunk]) -> list[Citation]:
+    def build(
+        self, chunks: tuple[RetrievedChunk, ...] | list[RetrievedChunk]
+    ) -> list[Citation]:
         citations: list[Citation] = []
         seen: set[tuple[str, int, int]] = set()
         for chunk in chunks:

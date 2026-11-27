@@ -31,14 +31,18 @@ def main() -> int:
     args = parser.parse_args()
 
     settings = get_settings()
-    embedding = EmbeddingService(settings.embedding_model_name, settings.embedding_batch_size)
+    embedding = EmbeddingService(
+        settings.embedding_model_name, settings.embedding_batch_size
+    )
     store = ChromaVectorStore(settings.chroma_persist_dir)
     search = ChromaVectorSearch(store._client, collection_name_for)
     query_vector = embedding.embed_query(args.question)
     raw = search.query(args.repo_id, query_vector, settings.retrieval_top_k)
     print("Raw retrieval scores (cosine similarity; threshold not applied):")
     for hit in raw:
-        print(f"  {distance_to_similarity(hit.distance):.4f}  {hit.path}:{hit.start_line}-{hit.end_line}")
+        print(
+            f"  {distance_to_similarity(hit.distance):.4f}  {hit.path}:{hit.start_line}-{hit.end_line}"
+        )
 
     repository = RepoRepository(settings.sqlite_path)
     service = build_query_service(

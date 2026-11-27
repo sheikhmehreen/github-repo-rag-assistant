@@ -15,29 +15,47 @@ from app.retrieval.retriever import RawHit, Retriever
 
 
 class Search:
-    def __init__(self, hits): self.hits = hits
-    def query(self, repo_id, embedding, top_k): return self.hits[:top_k]
+    def __init__(self, hits):
+        self.hits = hits
+
+    def query(self, repo_id, embedding, top_k):
+        return self.hits[:top_k]
 
 
 class Collection:
     def query(self, **kwargs):
-        return {"documents": [["login uses JWT"]],
-                "metadatas": [[{"file_path": "auth.py", "start_line": 4, "end_line": 8}]],
-                "distances": [[.05]]}
+        return {
+            "documents": [["login uses JWT"]],
+            "metadatas": [[{"file_path": "auth.py", "start_line": 4, "end_line": 8}]],
+            "distances": [[0.05]],
+        }
 
 
 class Chroma:
-    def get_collection(self, name): return Collection()
+    def get_collection(self, name):
+        return Collection()
 
 
-def make_service(status=RepoStatus.READY, answer="JWT is used.", hits=None, max_chars=100):
-    search = Search(hits if hits is not None else [RawHit("login uses JWT", "auth.py", 4, 8, .05)])
-    retriever = Retriever(lambda _q: [1.0], search, min_similarity=.3)
+def make_service(
+    status=RepoStatus.READY, answer="JWT is used.", hits=None, max_chars=100
+):
+    search = Search(
+        hits if hits is not None else [RawHit("login uses JWT", "auth.py", 4, 8, 0.05)]
+    )
+    retriever = Retriever(lambda _q: [1.0], search, min_similarity=0.3)
     llm = FakeLLMClient(answer)
-    service = QueryService(retriever, lambda _id: status, llm,
-                           __import__("app.generation.prompt_builder", fromlist=["PromptBuilder"]).PromptBuilder(),
-                           __import__("app.generation.citations", fromlist=["CitationBuilder"]).CitationBuilder(),
-                           max_question_chars=max_chars)
+    service = QueryService(
+        retriever,
+        lambda _id: status,
+        llm,
+        __import__(
+            "app.generation.prompt_builder", fromlist=["PromptBuilder"]
+        ).PromptBuilder(),
+        __import__(
+            "app.generation.citations", fromlist=["CitationBuilder"]
+        ).CitationBuilder(),
+        max_question_chars=max_chars,
+    )
     return service, llm
 
 
@@ -65,23 +83,43 @@ def test_not_found_llm_answer_is_canonical_and_has_no_citations():
     assert result.citations == []
 
 
-@pytest.mark.parametrize("question,error", [(" ", QuestionInvalidError), ("x" * 101, QuestionTooLongError)])
+@pytest.mark.parametrize(
+    "question,error", [(" ", QuestionInvalidError), ("x" * 101, QuestionTooLongError)]
+)
 def test_question_validation_precedes_repo_lookup(question, error):
     service, _ = make_service(max_chars=100)
-    with pytest.raises(error): service.query("repo", question)
+    with pytest.raises(error):
+        service.query("repo", question)
 
 
 def test_missing_and_not_ready_repos_are_rejected():
-    missing = QueryService(Retriever(lambda _q: [1], Search([])),
-                           lambda _id: (_ for _ in ()).throw(DatabaseNotFound("x")), FakeLLMClient(),
-                           __import__("app.generation.prompt_builder", fromlist=["PromptBuilder"]).PromptBuilder(),
-                           __import__("app.generation.citations", fromlist=["CitationBuilder"]).CitationBuilder())
-    with pytest.raises(RepoNotFoundError): missing.query("x", "q")
+    missing = QueryService(
+        Retriever(lambda _q: [1], Search([])),
+        lambda _id: (_ for _ in ()).throw(DatabaseNotFound("x")),
+        FakeLLMClient(),
+        __import__(
+            "app.generation.prompt_builder", fromlist=["PromptBuilder"]
+        ).PromptBuilder(),
+        __import__(
+            "app.generation.citations", fromlist=["CitationBuilder"]
+        ).CitationBuilder(),
+    )
+    with pytest.raises(RepoNotFoundError):
+        missing.query("x", "q")
     service, _ = make_service(status=RepoStatus.PROCESSING)
-    with pytest.raises(RepoNotReadyError): service.query("repo", "q")
+    with pytest.raises(RepoNotReadyError):
+        service.query("repo", "q")
 
 
 def test_factory_wires_chroma_fake_and_settings():
-    service = build_query_service(Settings(retrieval_min_similarity=.3), lambda _q: [1.0], Chroma(),
-                                  lambda repo: f"repo_{repo}", lambda _id: "ready", FakeLLMClient())
-    assert service.query("abc", "how does login work?").citations[0].label == "auth.py:4-8"
+    service = build_query_service(
+        Settings(retrieval_min_similarity=0.3),
+        lambda _q: [1.0],
+        Chroma(),
+        lambda repo: f"repo_{repo}",
+        lambda _id: "ready",
+        FakeLLMClient(),
+    )
+    assert (
+        service.query("abc", "how does login work?").citations[0].label == "auth.py:4-8"
+    )

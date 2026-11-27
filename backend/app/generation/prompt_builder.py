@@ -46,15 +46,21 @@ class PromptBuilder:
     def build(self, question: str, chunks: list[RetrievedChunk]) -> BuiltPrompt:
         if not chunks:
             raise ValueError("PromptBuilder requires at least one retrieved chunk")
-        fixed = len(SYSTEM_PROMPT) + len("<context>\n</context>\n\nQuestion:\n") + len(question)
+        fixed = (
+            len(SYSTEM_PROMPT)
+            + len("<context>\n</context>\n\nQuestion:\n")
+            + len(question)
+        )
         available = self._max_chars - fixed
         if available <= 0:
             raise PromptTooLargeError()
         entries: list[str] = []
         used: list[RetrievedChunk] = []
         for index, chunk in enumerate(chunks, start=1):
-            prefix = (f'<chunk id="{index}" path="{_safe_attribute(chunk.path)}" '
-                      f'lines="{chunk.start_line}-{chunk.end_line}">\n')
+            prefix = (
+                f'<chunk id="{index}" path="{_safe_attribute(chunk.path)}" '
+                f'lines="{chunk.start_line}-{chunk.end_line}">\n'
+            )
             suffix = "\n</chunk>\n"
             body = _neutralize(chunk.text)
             full = prefix + body + suffix
@@ -70,7 +76,12 @@ class PromptBuilder:
             break
         if not used:
             raise PromptTooLargeError()
-        user = "<context>\n" + "".join(entries) + "</context>\n\nQuestion:\n" + _neutralize(question)
+        user = (
+            "<context>\n"
+            + "".join(entries)
+            + "</context>\n\nQuestion:\n"
+            + _neutralize(question)
+        )
         if len(SYSTEM_PROMPT) + len(user) > self._max_chars:
             raise PromptTooLargeError()
         return BuiltPrompt(SYSTEM_PROMPT, user, tuple(used))
