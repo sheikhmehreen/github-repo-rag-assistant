@@ -1,6 +1,8 @@
 """Tests for application settings used by Epic 2 ingestion."""
 
+import pytest
 from app.core.config import PROJECT_ROOT, Settings
+from pydantic import ValidationError
 
 
 def test_epic_two_limits_have_bounded_defaults() -> None:
@@ -48,3 +50,19 @@ def test_epic_four_defaults_include_batched_embeddings_and_storage_paths() -> No
     assert settings.chroma_persist_dir == PROJECT_ROOT / "data/chroma"
     assert settings.sqlite_path == PROJECT_ROOT / "data/repos.db"
     assert settings.ingestion_temp_dir == PROJECT_ROOT / "data/tmp"
+
+
+def test_epic_five_retrieval_and_generation_limits_are_bounded() -> None:
+    settings = Settings(_env_file=None, debug=False)
+
+    assert settings.retrieval_top_k == 5
+    assert settings.retrieval_min_similarity == 0.29
+    assert settings.max_question_chars == 1000
+    assert settings.max_prompt_chars == 12_000
+    assert settings.llm_provider == "ollama"
+    assert settings.ollama_model == "llama3.2:latest"
+
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None, retrieval_top_k=21)
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None, retrieval_min_similarity=1.1)

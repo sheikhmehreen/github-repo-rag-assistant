@@ -16,7 +16,7 @@ PROJECT_ROOT = BACKEND_DIR.parent
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=PROJECT_ROOT / ".env",
+        env_file=PROJECT_ROOT.parent / ".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
@@ -50,12 +50,15 @@ class Settings(BaseSettings):
     chroma_persist_dir: Path = Field(default=Path("data/chroma"))
     max_chunks_per_repo: int = Field(default=5000, gt=0)
 
-    # Retrieval
-    retrieval_top_k: int = Field(default=5, gt=0)
+    # Retrieval (Epic 5)
+    retrieval_top_k: int = Field(default=5, ge=1, le=20)
+    retrieval_min_similarity: float = Field(default=0.29, ge=-1.0, le=1.0)
     max_question_length: int = Field(default=1000, gt=0)
+    max_question_chars: int = Field(default=1000, ge=1)
+    max_prompt_chars: int = Field(default=12_000, ge=2000)
 
     # Cosine SIMILARITY
-    retrieval_score_threshold: float = Field(default=0.35, ge=-1.0, le=1.0)
+    retrieval_score_threshold: float = Field(default=0.29, ge=-1.0, le=1.0)
 
     # Timeouts (seconds)
     github_api_timeout_seconds: int = Field(default=15, gt=0)
@@ -63,18 +66,23 @@ class Settings(BaseSettings):
     repo_download_timeout_seconds: int = Field(default=60, gt=0)
     download_timeout_seconds: float = Field(default=60.0, gt=0)
     ingestion_timeout_seconds: int = Field(default=300, gt=0)
-    llm_timeout_seconds: int = Field(default=60, gt=0)
+    llm_timeout_seconds: float = Field(default=60.0, gt=0)
 
     # GitHub Secrets
     github_token: SecretStr | None = Field(default=None)
     github_api_base_url: str = "https://api.github.com"
 
-    # LLM Settings
-    llm_provider: str = "ollama"
+    # LLM settings (Epic 5)
+    llm_provider: Literal["ollama", "hosted"] = "ollama"
     llm_model: str = "llama3.2"
     llm_base_url: str = "http://localhost:11434"
-    llm_max_output_tokens: int = 512
-    llm_max_retries: int = 2
+    ollama_base_url: str = "http://localhost:11434"
+    ollama_model: str = "llama3.2:latest"
+    hosted_llm_base_url: str = "https://api.groq.com/openai/v1"
+    hosted_llm_model: str = ""
+    hosted_llm_api_key: SecretStr | None = None
+    llm_max_output_tokens: int = Field(default=512, ge=16, le=4096)
+    llm_max_retries: int = Field(default=2, ge=0, le=5)
 
     # Embeddings
     embedding_model_name: str = "sentence-transformers/all-MiniLM-L6-v2"
